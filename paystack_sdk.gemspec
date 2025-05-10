@@ -22,7 +22,6 @@ Gem::Specification.new do |spec|
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/nanafox/paystack_sdk"
   spec.metadata["changelog_uri"] = "https://github.com/nanafox/paystack_sdk/blob/main/CHANGELOG.md"
 
   # Specify which files should be added to the gem when it is released.
@@ -41,9 +40,9 @@ Gem::Specification.new do |spec|
   # Dependencies
   spec.add_dependency "faraday", "~> 2.13.1"
   spec.add_development_dependency "rspec", "~> 3.12"
-  spec.add_development_dependency "standard"
-  spec.add_development_dependency "irb"
-  spec.add_development_dependency "rake"
+  spec.add_development_dependency "standard", "~> 1.49.0"
+  spec.add_development_dependency "irb", "~> 1.15.1"
+  spec.add_development_dependency "rake", "~> 13.2.1"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

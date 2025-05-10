@@ -101,11 +101,11 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  irb
+  irb (~> 1.15.1)
   paystack_sdk!
-  rake
+  rake (~> 13.2.1)
   rspec (~> 3.12)
-  standard
+  standard (~> 1.49.0)
 
 BUNDLED WITH
    2.6.8
