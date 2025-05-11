@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "debug"
 require_relative "../lib/paystack_sdk"
 
 RSpec.configure do |config|
