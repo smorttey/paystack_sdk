@@ -1,3 +1,7 @@
+# frozen_string_literal: true
+
+require_relative "../response"
+
 module PaystackSdk
   module Resources
     # The `Base` class serves as a parent class for all resource classes in the SDK.
@@ -10,29 +14,15 @@ module PaystackSdk
         @connection = connection
       end
 
-      # Checks if the last API response was successful.
-      #
-      # @return [Boolean] `true` if the last API response was successful, otherwise `false`.
-      def success?
-        @api_response&.success? || false
-      end
-
       private
 
       # Handles the API response, raising an error if the response is unsuccessful.
       #
       # @param response [Faraday::Response] The response object returned by the Faraday connection.
-      # @return [Hash] The parsed response body if the request was successful.
+      # @return [PaystackSdk::Response] The parsed response body wrapped in a `PaystackSdk::Response` object if the request was successful.
       # @raise [PaystackSdk::Error] If the response indicates an error.
       def handle_response(response)
-        @api_response ||= response
-
-        if response.success?
-          response.body
-        else
-          error_message = response.body.is_a?(Hash) ? response.body["message"] : "Paystack API Error"
-          raise PaystackSdk::Error, error_message
-        end
+        PaystackSdk::Response.new(response)
       end
     end
   end
