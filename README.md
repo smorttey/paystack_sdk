@@ -36,18 +36,36 @@ paystack = PaystackSdk::Client.new(api_key: "sk_test_xxx")
 params = {email: "customer@email.com", amount: "2300", currency: "USD"}
 response = paystack.transactions.initialize_transaction(params)
 
+if response.success?
+  puts response.authorization_url
+else
+  puts resposne.error_message
+end
+
 # Example: Verify a payment
 response = paystack.transactions.verify(reference: "transaction_reference")
-if paystack.transactions.success?
+if response.success?
   puts "Payment verified successfully!"
 else
   puts "Payment verification failed: #{response.error_message}"
 end
-
-# Note: The `response` object is a hash containing the API response. Use the `#success?`
-# method on the relevant resource instance (e.g., `transactions`, `plans`, `subscriptions`)
-# to determine if the request was successful.
 ```
+
+### The Orginal Response
+
+There will times you may need access to the original API response. For such cases, you
+can use the `#original_response` method on the response object.
+
+The return value is a hash with all the values from the HTTP request. This could be useful
+when you need to debug or gain access to the response its raw state.
+
+For example
+```ruby
+response = transaction.list
+
+puts response.original_message # => This will return the exact response received from Paystack
+```
+
 
 Refer to the [documentation](https://github.com/nanafox/paystack_sdk) for more detailed usage examples and supported endpoints.
 
