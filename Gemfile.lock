@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    paystack_sdk (0.0.1)
+    paystack_sdk (0.0.2)
       faraday (~> 2.13.1)
 
 GEM
