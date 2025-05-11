@@ -4,8 +4,38 @@ require_relative "base"
 
 module PaystackSdk
   module Resources
-    # The `Transactions` class provides methods for interacting with the Paystack Transactions API.
+    # The `Transactions` class provides methods for interacting with the Paystack
+    #  Transactions API.
     # It allows you to initialize transactions, verify payments, list transactions, and fetch transaction details.
+    # The Transactions class provides methods to interact with the Paystack API for managing transactions.
+    # It includes functionalities for initializing, verifying, listing, fetching, and retrieving transaction totals.
+    #
+    # Example usage:
+    # ```ruby
+    #   transactions = PaystackSdk::Resources::Transactions.new(connection)
+    #
+    #   # Initialize a transaction
+    #   payload = { email: "customer@email.com", amount: 10000, currency: "GHS" }
+    #   response = transactions.initialize_transaction(payload)
+    #   if response.success?
+    #     puts "Transaction initialized successfully."
+    #     puts "Authorization URL: #{response.data.authorization_url}"
+    #   else
+    #     puts "Error initializing transaction: #{response.error_message}"
+    #   end
+    #
+    #   # Verify a transaction
+    #   response = transactions.verify(reference: "transaction_reference")
+    #
+    #   # List transactions
+    #   response = transactions.list(per_page: 50, page: 1)
+    #
+    #   # Fetch a single transaction
+    #   response = transactions.fetch(transaction_id: 12345)
+    #
+    #   # Get transaction totals
+    #   response = transactions.totals
+    # ```
     class Transactions < PaystackSdk::Resources::Base
       # Initializes a new transaction.
       #
@@ -17,7 +47,7 @@ module PaystackSdk
       #   payload = { email: "customer@email.com", amount: 10000, currency: "GHS" }
       #   response = transactions.initialize_transaction(payload)
       def initialize_transaction(payload)
-        raise PaystackSdk::Error, "Invalid payload" unless payload.is_a?(Hash)
+        raise PaystackSdk::Error, "Payload must be a hash" unless payload.is_a?(Hash)
         response = @connection.post("/transaction/initialize", payload)
         handle_response(response)
       end
@@ -37,26 +67,29 @@ module PaystackSdk
 
       # Lists all transactions.
       #
-      # @return [Hash] The response from the Paystack API containing a list of transactions.
+      # @param per_page [Integer] Number of records per page (default: 50)
+      # @param page [Integer] Page number to retrieve (default: 1)
+      # @return [PaystackSdk::Response] The response from the Paystack API containing a
+      # list of transactions.
       # @raise [PaystackSdk::Error] If the API request fails.
       #
       # @example
-      #   response = transactions.list
-      def list
-        response = @connection.get("/transaction")
+      #   response = transactions.list(per_page: 20, page: 2)
+      def list(per_page: 50, page: 1)
+        response = @connection.get("/transaction", {perPage: per_page, page: page})
         handle_response(response)
       end
 
       # Fetches details of a single transaction by its ID.
       #
-      # @param id [Integer] The ID of the transaction to fetch.
+      # @param transaction_id [Integer] The ID of the transaction to fetch.
       # @return [Hash] The response from the Paystack API containing transaction details.
       # @raise [PaystackSdk::Error] If the API request fails.
       #
       # @example
       #   response = transactions.fetch("transaction_id")
-      def fetch(id)
-        response = @connection.get("/transaction/#{id}")
+      def fetch(transaction_id)
+        response = @connection.get("/transaction/#{transaction_id}")
         handle_response(response)
       end
 
