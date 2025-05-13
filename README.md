@@ -53,7 +53,7 @@ end
 
 ### The Orginal Response
 
-There will times you may need access to the original API response. For such cases, you
+There will be times you may need access to the original API response. For such cases, you
 can use the `#original_response` method on the response object.
 
 The return value is a hash with all the values from the HTTP request. This could be useful
@@ -63,7 +63,7 @@ For example
 ```ruby
 response = transaction.list
 
-puts response.original_message # => This will return the exact response received from Paystack
+puts response.original_response # => This will return the exact response received from Paystack
 ```
 
 
