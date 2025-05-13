@@ -46,7 +46,7 @@ module PaystackSdk
       # @example
       #   payload = { email: "customer@email.com", amount: 10000, currency: "GHS" }
       #   response = transactions.initialize_transaction(payload)
-      def initialize_transaction(payload)
+      def initiate(payload)
         raise PaystackSdk::Error, "Payload must be a hash" unless payload.is_a?(Hash)
         response = @connection.post("/transaction/initialize", payload)
         handle_response(response)

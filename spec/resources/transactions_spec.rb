@@ -5,7 +5,7 @@ RSpec.describe PaystackSdk::Resources::Transactions do
   let(:connection) { instance_double(Faraday::Connection) }
   let(:transactions) { described_class.new(connection) }
 
-  describe "#initialize_transaction" do
+  describe "#initiate" do
     let(:params) do
       {
         email: "customer@email.com",
@@ -32,7 +32,7 @@ RSpec.describe PaystackSdk::Resources::Transactions do
         # Mock connection to return the Faraday response
         allow(connection).to receive(:post).with("/transaction/initialize", params).and_return(faraday_response)
 
-        response = transactions.initialize_transaction(params)
+        response = transactions.initiate(params)
 
         # Test the response wrapper
         expect(response).to be_a(PaystackSdk::Response)
@@ -63,7 +63,7 @@ RSpec.describe PaystackSdk::Resources::Transactions do
 
         allow(connection).to receive(:post).with("/transaction/initialize", params).and_return(faraday_response)
 
-        response = transactions.initialize_transaction(params)
+        response = transactions.initiate(params)
 
         expect(response).to be_a(PaystackSdk::Response)
         expect(response.success?).to be false
