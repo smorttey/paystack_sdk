@@ -30,11 +30,11 @@ Here’s a basic example of how to use the `paystack_sdk` gem:
 require 'paystack_sdk'
 
 # Initialize the SDK with your Paystack secret key
-paystack = PaystackSdk::Client.new(api_key: "sk_test_xxx")
+paystack = PaystackSdk::Client.new(secret_key: "sk_test_xxx")
 
 # Example: Initialize a payment
 params = {email: "customer@email.com", amount: "2300", currency: "USD"}
-response = paystack.transactions.initialize_transaction(params)
+response = paystack.transactions.initiate(params)
 
 if response.success?
   puts response.authorization_url

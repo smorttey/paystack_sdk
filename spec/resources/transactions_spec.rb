@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe PaystackSdk::Resources::Transactions do
-  let(:api_key) { "sk_test_xxx" }
+  let(:secret_key) { "sk_test_xxx" }
   let(:connection) { instance_double(Faraday::Connection) }
   let(:transactions) { described_class.new(connection) }
 

@@ -12,7 +12,7 @@ module PaystackSdk
     #
     # Example usage:
     # ```ruby
-    #   transactions = PaystackSdk::Resources::Transactions.new(connection)
+    #   transactions = PaystackSdk::Resources::Transactions.new(secret_key:)
     #
     #   # Initialize a transaction
     #   payload = { email: "customer@email.com", amount: 10000, currency: "GHS" }

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 RSpec.describe PaystackSdk::Client do
-  let(:api_key) { "sk_test_xxx" }
+  let(:secret_key) { "sk_test_xxx" }
   let(:connection_double) { instance_double(Faraday::Connection) }
   let(:client) do
     allow(Faraday).to receive(:new).and_return(connection_double)
-    described_class.new(api_key: api_key)
+    described_class.new(secret_key: secret_key)
   end
 
   describe "#initialize" do
@@ -20,14 +20,14 @@ RSpec.describe PaystackSdk::Client do
 
     it "sets the correct headers" do
       headers = {
-        "Authorization" => "Bearer #{api_key}",
+        "Authorization" => "Bearer #{secret_key}",
         "Content-Type" => "application/json",
         "User-Agent" => "paystack_sdk/#{PaystackSdk::VERSION}"
       }
       allow(connection_double).to receive(:headers).and_return(headers)
 
       connection_headers = client.instance_variable_get(:@connection).headers
-      expect(connection_headers["Authorization"]).to eq("Bearer #{api_key}")
+      expect(connection_headers["Authorization"]).to eq("Bearer #{secret_key}")
       expect(connection_headers["Content-Type"]).to eq("application/json")
       expect(connection_headers["User-Agent"]).to eq("paystack_sdk/#{PaystackSdk::VERSION}")
     end
