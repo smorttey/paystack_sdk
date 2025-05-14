@@ -75,8 +75,8 @@ module PaystackSdk
       #
       # @example
       #   response = transactions.list(per_page: 20, page: 2)
-      def list(per_page: 50, page: 1)
-        response = @connection.get("/transaction", {perPage: per_page, page: page})
+      def list(per_page: 50, page: 1, **params)
+        response = @connection.get("/transaction", {perPage: per_page, page: page}.merge(params))
         handle_response(response)
       end
 
