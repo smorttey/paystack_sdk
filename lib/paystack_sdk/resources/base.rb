@@ -2,12 +2,16 @@
 
 require_relative "../response"
 require_relative "../client"
+require_relative "../validations"
 
 module PaystackSdk
   module Resources
     # The `Base` class serves as a parent class for all resource classes in the SDK.
     # It provides shared functionality, such as handling API responses.
     class Base
+      # Include validation methods
+      include PaystackSdk::Validations
+
       # Initializes a new `Base` instance.
       #
       # @param connection [Faraday::Connection, nil] The Faraday connection object used for API requests.
@@ -22,7 +26,7 @@ module PaystackSdk
       # @example With an API key
       #   resource = PaystackSdk::Resources::SomeResource.new(secret_key: "sk_test_xxx")
       #
-      # @example With default connection (requires PAYSTACK_secret_key environment variable)
+      # @example With default connection (requires PAYSTACK_SECRET_KEY environment variable)
       #   resource = PaystackSdk::Resources::SomeResource.new
       def initialize(connection = nil, secret_key: nil)
         @connection = if connection
@@ -31,10 +35,10 @@ module PaystackSdk
           create_connection(secret_key:)
         else
           # Try to get API key from environment variable
-          env_secret_key = ENV["PAYSTACK_secret_key"]
+          env_secret_key = ENV["PAYSTACK_SECRET_KEY"]
           raise PaystackSdk::Error, "No connection or API key provided" unless env_secret_key
 
-          create_connection(env_secret_key)
+          create_connection(secret_key: env_secret_key)
         end
       end
 
