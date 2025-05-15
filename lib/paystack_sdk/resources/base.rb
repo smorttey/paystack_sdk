@@ -3,14 +3,15 @@
 require_relative "../response"
 require_relative "../client"
 require_relative "../validations"
+require_relative "../utils/connection_utils"
 
 module PaystackSdk
   module Resources
     # The `Base` class serves as a parent class for all resource classes in the SDK.
     # It provides shared functionality, such as handling API responses.
     class Base
-      # Include validation methods
       include PaystackSdk::Validations
+      include PaystackSdk::Utils::ConnectionUtils
 
       # Initializes a new `Base` instance.
       #
@@ -29,35 +30,10 @@ module PaystackSdk
       # @example With default connection (requires PAYSTACK_SECRET_KEY environment variable)
       #   resource = PaystackSdk::Resources::SomeResource.new
       def initialize(connection = nil, secret_key: nil)
-        @connection = if connection
-          connection
-        elsif secret_key
-          create_connection(secret_key:)
-        else
-          # Try to get API key from environment variable
-          env_secret_key = ENV["PAYSTACK_SECRET_KEY"]
-          raise PaystackSdk::Error, "No connection or API key provided" unless env_secret_key
-
-          create_connection(secret_key: env_secret_key)
-        end
+        @connection = initialize_connection(connection, secret_key: secret_key)
       end
 
       private
-
-      # Creates a new Faraday connection with the Paystack API.
-      #
-      # @param secret_key [String] The secret API key for authenticating with the Paystack API.
-      # @return [Faraday::Connection] A configured Faraday connection.
-      def create_connection(secret_key:)
-        Faraday.new(url: PaystackSdk::Client::BASE_URL) do |conn|
-          conn.request :json
-          conn.response :json, content_type: /\bjson$/
-          conn.headers["Authorization"] = "Bearer #{secret_key}"
-          conn.headers["Content-Type"] = "application/json"
-          conn.headers["User-Agent"] = "paystack_sdk/#{PaystackSdk::VERSION}"
-          conn.adapter Faraday.default_adapter
-        end
-      end
 
       # Handles the API response, wrapping it in a Response object.
       #
