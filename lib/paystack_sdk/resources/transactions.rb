@@ -16,16 +16,21 @@ module PaystackSdk
     #
     #   # Initialize a transaction
     #   payload = { email: "customer@email.com", amount: 10000, currency: "GHS" }
-    #   response = transactions.initialize_transaction(payload)
+    #   response = transactions.initiate(payload)
     #   if response.success?
     #     puts "Transaction initialized successfully."
-    #     puts "Authorization URL: #{response.data.authorization_url}"
+    #     puts "Authorization URL: #{response.authorization_url}"
     #   else
     #     puts "Error initializing transaction: #{response.error_message}"
     #   end
     #
     #   # Verify a transaction
     #   response = transactions.verify(reference: "transaction_reference")
+    #   if response.status == "success"
+    #     puts "The payment with reference '#{response.reference}' is verified"
+    #   else
+    #     puts "Current status: #{response.status}"
+    #   end
     #
     #   # List transactions
     #   response = transactions.list(per_page: 50, page: 1)
@@ -44,8 +49,10 @@ module PaystackSdk
       # @raise [PaystackSdk::Error] If the payload is invalid or the API request fails.
       #
       # @example
+      # ```ruby
       #   payload = { email: "customer@email.com", amount: 10000, currency: "GHS" }
-      #   response = transactions.initialize_transaction(payload)
+      #   response = transactions.initiate(payload)
+      # ```
       def initiate(payload)
         raise PaystackSdk::Error, "Payload must be a hash" unless payload.is_a?(Hash)
         response = @connection.post("/transaction/initialize", payload)
@@ -100,8 +107,8 @@ module PaystackSdk
       #
       # @example
       #  response = transactions.totals
-      def totals
-        response = @connection.get("/transaction/totals")
+      def totals(**params)
+        response = @connection.get("/transaction/totals", **params)
         handle_response(response)
       end
     end
