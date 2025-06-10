@@ -23,7 +23,7 @@ module PaystackSdk
         else
           # Try to get API key from environment variable
           env_secret_key = ENV["PAYSTACK_SECRET_KEY"]
-          raise PaystackSdk::Error, "No connection or API key provided" unless env_secret_key
+          raise AuthenticationError, "No connection or API key provided" unless env_secret_key
 
           create_connection(secret_key: env_secret_key)
         end

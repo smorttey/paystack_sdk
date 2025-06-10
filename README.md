@@ -14,6 +14,14 @@ The `paystack_sdk` gem provides a simple and intuitive interface for interacting
     - [List Transactions](#list-transactions)
     - [Fetch a Transaction](#fetch-a-transaction)
     - [Get Transaction Totals](#get-transaction-totals)
+  - [Customers](#customers)
+    - [Create a Customer](#create-a-customer)
+    - [List Customers](#list-customers)
+    - [Fetch a Customer](#fetch-a-customer)
+    - [Update a Customer](#update-a-customer)
+    - [Validate a Customer](#validate-a-customer)
+    - [Set Risk Action](#set-risk-action)
+    - [Deactivate Authorization](#deactivate-authorization)
   - [Response Handling](#response-handling)
     - [Working with Response Objects](#working-with-response-objects)
     - [Accessing the Original Response](#accessing-the-original-response)
@@ -65,10 +73,30 @@ response = paystack.transactions.initiate(params)
 
 if response.success?
   puts "Visit this URL to complete payment: #{response.authorization_url}"
+  puts "Transaction reference: #{response.reference}"
 else
   puts "Error: #{response.error_message}"
 end
+
+# Create a customer
+customer_params = {
+  email: "customer@email.com",
+  first_name: "John",
+  last_name: "Doe"
+}
+
+customer_response = paystack.customers.create(customer_params)
+
+if customer_response.success?
+  puts "Customer created: #{customer_response.data.customer_code}"
+else
+  puts "Error: #{customer_response.error_message}"
+end
 ```
+
+### Response Format
+
+The SDK handles API responses that use string keys (as returned by Paystack) and provides seamless access through both string and symbol notation. All response data maintains the original string key format from the API while offering convenient dot notation access.
 
 ## Usage
 
@@ -219,6 +247,165 @@ else
 end
 ```
 
+### Customers
+
+The SDK provides comprehensive support for Paystack's Customer API, allowing you to manage customer records and their associated data.
+
+#### Create a Customer
+
+```ruby
+# Prepare customer parameters
+params = {
+  email: "customer@example.com",
+  first_name: "John",
+  last_name: "Doe",
+  phone: "+2348123456789"
+}
+
+# Create the customer
+response = paystack.customers.create(params)
+
+if response.success?
+  puts "Customer created successfully!"
+  puts "Customer Code: #{response.data.customer_code}"
+  puts "Email: #{response.data.email}"
+  puts "Name: #{response.data.first_name} #{response.data.last_name}"
+else
+  puts "Error: #{response.error_message}"
+end
+```
+
+#### List Customers
+
+```ruby
+# Get all customers (default pagination: 50 per page)
+response = paystack.customers.list
+
+# With custom pagination
+response = paystack.customers.list(per_page: 20, page: 2)
+
+# With date filters
+response = paystack.customers.list(
+  per_page: 10,
+  page: 1,
+  from: "2025-01-01",
+  to: "2025-06-10"
+)
+
+if response.success?
+  puts "Total customers: #{response.data.size}"
+
+  response.data.each do |customer|
+    puts "Code: #{customer.customer_code}"
+    puts "Email: #{customer.email}"
+    puts "Name: #{customer.first_name} #{customer.last_name}"
+    puts "----------------"
+  end
+else
+  puts "Error: #{response.error_message}"
+end
+```
+
+#### Fetch a Customer
+
+```ruby
+# Fetch by customer code
+customer_code = "CUS_xr58yrr2ujlft9k"
+response = paystack.customers.fetch(customer_code)
+
+# Or fetch by email
+response = paystack.customers.fetch("customer@example.com")
+
+if response.success?
+  customer = response.data
+  puts "Customer details:"
+  puts "Code: #{customer.customer_code}"
+  puts "Email: #{customer.email}"
+  puts "Name: #{customer.first_name} #{customer.last_name}"
+  puts "Phone: #{customer.phone}"
+else
+  puts "Error: #{response.error_message}"
+end
+```
+
+#### Update a Customer
+
+```ruby
+customer_code = "CUS_xr58yrr2ujlft9k"
+update_params = {
+  first_name: "Jane",
+  last_name: "Smith",
+  phone: "+2348987654321"
+}
+
+response = paystack.customers.update(customer_code, update_params)
+
+if response.success?
+  puts "Customer updated successfully!"
+  puts "Updated Name: #{response.data.first_name} #{response.data.last_name}"
+else
+  puts "Error: #{response.error_message}"
+end
+```
+
+#### Validate a Customer
+
+```ruby
+customer_code = "CUS_xr58yrr2ujlft9k"
+validation_params = {
+  country: "NG",
+  type: "bank_account",
+  account_number: "0123456789",
+  bvn: "20012345677",
+  bank_code: "007",
+  first_name: "John",
+  last_name: "Doe"
+}
+
+response = paystack.customers.validate(customer_code, validation_params)
+
+if response.success?
+  puts "Customer validation initiated: #{response.message}"
+else
+  puts "Error: #{response.error_message}"
+end
+```
+
+#### Set Risk Action
+
+```ruby
+params = {
+  customer: "CUS_xr58yrr2ujlft9k",
+  risk_action: "allow"  # Options: "default", "allow", "deny"
+}
+
+response = paystack.customers.set_risk_action(params)
+
+if response.success?
+  puts "Risk action set successfully!"
+  puts "Customer: #{response.data.customer_code}"
+  puts "Risk Action: #{response.data.risk_action}"
+else
+  puts "Error: #{response.error_message}"
+end
+```
+
+#### Deactivate Authorization
+
+```ruby
+params = {
+  authorization_code: "AUTH_72btv547"
+}
+
+response = paystack.customers.deactivate_authorization(params)
+
+if response.success?
+  puts "Authorization deactivated: #{response.message}"
+else
+  puts "Error: #{response.error_message}"
+end
+```
+
 ### Response Handling
 
 #### Working with Response Objects
@@ -272,7 +459,24 @@ current_page = original.dig("meta", "page")
 
 #### Error Handling
 
+The SDK provides specific error classes for different types of failures, making it easier to handle errors appropriately:
+
 ```ruby
+begin
+  response = paystack.transactions.verify(reference: "invalid_reference")
+rescue PaystackSdk::ResourceNotFoundError => e
+  puts "Resource not found: #{e.message}"
+rescue PaystackSdk::AuthenticationError => e
+  puts "Authentication failed: #{e.message}"
+rescue PaystackSdk::ValidationError => e
+  puts "Validation error: #{e.message}"
+rescue PaystackSdk::APIError => e
+  puts "API error: #{e.message}"
+rescue PaystackSdk::Error => e
+  puts "General error: #{e.message}"
+end
+
+# Alternatively, check response success without exceptions
 response = paystack.transactions.verify(reference: "invalid_reference")
 
 unless response.success?
@@ -287,6 +491,22 @@ unless response.success?
 end
 ```
 
+##### Error Types
+
+The SDK includes several specific error classes:
+
+- **`PaystackSdk::ValidationError`** - Base class for all validation errors
+
+  - **`PaystackSdk::MissingParamError`** - Raised when required parameters are missing
+  - **`PaystackSdk::InvalidFormatError`** - Raised when parameters have invalid format (e.g., invalid email)
+  - **`PaystackSdk::InvalidValueError`** - Raised when parameters have invalid values (e.g., not in allowed list)
+
+- **`PaystackSdk::APIError`** - Base class for API-related errors
+  - **`PaystackSdk::AuthenticationError`** - Authentication failures
+  - **`PaystackSdk::ResourceNotFoundError`** - Resource not found (404 errors)
+  - **`PaystackSdk::RateLimitError`** - Rate limiting encountered
+  - **`PaystackSdk::ServerError`** - Server errors (5xx responses)
+
 ## Advanced Usage
 
 ### Environment Variables
@@ -299,6 +519,7 @@ ENV["PAYSTACK_SECRET_KEY"] = "sk_test_xxx"
 
 # Then initialize resources without specifying the key
 transactions = PaystackSdk::Resources::Transactions.new
+customers = PaystackSdk::Resources::Customers.new
 ```
 
 ### Direct Resource Instantiation
@@ -308,6 +529,7 @@ For more advanced usage, you can instantiate resource classes directly:
 ```ruby
 # With a secret key
 transactions = PaystackSdk::Resources::Transactions.new(secret_key: "sk_test_xxx")
+customers = PaystackSdk::Resources::Customers.new(secret_key: "sk_test_xxx")
 
 # With an existing Faraday connection
 connection = Faraday.new(url: "https://api.paystack.co") do |conn|
@@ -316,6 +538,7 @@ end
 
 # The secret key can be omitted if set in an environment
 transactions = PaystackSdk::Resources::Transactions.new(connection, secret_key:)
+customers = PaystackSdk::Resources::Customers.new(connection, secret_key:)
 ```
 
 For more detailed documentation on specific resources, please refer to the following guides:
@@ -328,6 +551,33 @@ For more detailed documentation on specific resources, please refer to the follo
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+
+### Testing
+
+The SDK includes comprehensive test coverage with consistent response format handling. All test specifications use string keys with hashrocket notation (`=>`) to match the actual format returned by the Paystack API:
+
+```ruby
+# Example test response format
+.and_return(Faraday::Response.new(status: 200, body: {
+  "status" => true,
+  "message" => "Transaction initialized",
+  "data" => {
+    "authorization_url" => "https://checkout.paystack.com/abc123",
+    "access_code" => "access_code_123",
+    "reference" => "ref_123"
+  }
+}))
+```
+
+Tests also validate specific error types to ensure proper exception handling:
+
+```ruby
+# Testing specific error types
+expect { customers.set_risk_action(invalid_params) }
+  .to raise_error(PaystackSdk::InvalidValueError, /risk_action/i)
+```
+
+### Installation and Release
 
 To install this gem onto your local machine, run:
 
