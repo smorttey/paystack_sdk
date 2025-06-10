@@ -152,6 +152,7 @@ module PaystackSdk
     # @raise [PaystackSdk::Error] If any validation fails
     #
     # @example
+    # ```ruby
     #   validate_fields!(
     #     payload: params,
     #     validations: {
@@ -161,6 +162,7 @@ module PaystackSdk
     #       reference: { type: :reference, required: false }
     #     }
     #   )
+    # ```
     def validate_fields!(payload:, validations:)
       # First check required fields
       required_fields = validations.select { |_, opts| opts[:required] }.keys

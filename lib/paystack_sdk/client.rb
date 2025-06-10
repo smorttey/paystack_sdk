@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "resources/transactions"
+require_relative "resources/customers"
 require_relative "utils/connection_utils"
 
 module PaystackSdk
@@ -45,6 +46,20 @@ module PaystackSdk
     # ```
     def transactions
       @transactions ||= Resources::Transactions.new(@connection)
+    end
+
+    # Provides access to the `Customers` resource.
+    #
+    # @return [PaystackSdk::Resources::Customers] An instance of the
+    #  `Customers` resource.
+    #
+    # @example
+    # ```ruby
+    #   customers = client.customers
+    #   response = customers.list
+    # ```
+    def customers
+      @customers ||= Resources::Customers.new(@connection)
     end
   end
 end
