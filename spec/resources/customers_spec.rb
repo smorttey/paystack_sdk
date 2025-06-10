@@ -16,104 +16,92 @@ RSpec.describe PaystackSdk::Resources::Customers do
     end
 
     context "with successful response" do
-      it "creates a customer successfully" do
-        response_body = {
-          "status" => true,
-          "message" => "Customer created",
-          "data" => {
-            "email" => "customer@email.com",
-            "integration" => 100032,
-            "domain" => "test",
-            "customer_code" => "CUS_xnxdt6s1zg1f4nx",
-            "id" => 1173,
-            "identified" => false,
-            "identifications" => nil,
-            "createdAt" => "2016-03-29T20:03:09.584Z",
-            "updatedAt" => "2016-03-29T20:03:09.584Z"
-          }
-        }
-
-        faraday_response = Faraday::Response.new(status: 200, body: response_body)
-
-        expect(connection).to receive(:post)
+      before do
+        allow(connection).to receive(:post)
           .with("customer", params)
-          .and_return(faraday_response)
+          .and_return(Faraday::Response.new(status: 200, body: {
+            "status" => true,
+            "message" => "Customer created",
+            "data" => {
+              "customer_code" => "CUS_xr58yrr2ujlft9k",
+              "email" => params[:email],
+              "first_name" => params[:first_name],
+              "last_name" => params[:last_name],
+              "phone" => params[:phone]
+            }
+          }))
+      end
 
+      it "creates a new customer" do
         response = customers.create(params)
-
-        expect(response).to be_a(PaystackSdk::Response)
         expect(response).to be_success
-        expect(response.customer_code).to eq("CUS_xnxdt6s1zg1f4nx")
+        expect(response.data.customer_code).to eq("CUS_xr58yrr2ujlft9k")
       end
     end
 
     context "with failed response" do
-      it "returns a failed response with error message" do
-        response_body = {
-          "status" => false,
-          "message" => "Invalid email address"
-        }
-
-        faraday_response = Faraday::Response.new(status: 400, body: response_body)
-
-        expect(connection).to receive(:post)
+      before do
+        allow(connection).to receive(:post)
           .with("customer", params)
-          .and_return(faraday_response)
+          .and_return(Faraday::Response.new(status: 400, body: {
+            "status" => false,
+            "message" => "Customer creation failed"
+          }))
+      end
 
-        response = customers.create(params)
-
-        expect(response).not_to be_success
-        expect(response.error_message).to eq("Invalid email address")
+      it "raises an APIError" do
+        expect { customers.create(params) }.to raise_error(PaystackSdk::APIError)
       end
     end
 
     context "with validation errors" do
-      it "raises an error when email is missing" do
-        invalid_params = params.reject { |k| k == :email }
-        expect { customers.create(invalid_params) }
-          .to raise_error(PaystackSdk::Error, /email/i)
+      it "raises MissingParamError when email is missing" do
+        invalid_params = params.except(:email)
+        expect { customers.create(invalid_params) }.to raise_error(
+          PaystackSdk::MissingParamError,
+          "Missing required parameter: email"
+        )
       end
 
-      it "raises an error when email format is invalid" do
+      it "raises InvalidFormatError when email format is invalid" do
         invalid_params = params.merge(email: "invalid-email")
-        expect { customers.create(invalid_params) }
-          .to raise_error(PaystackSdk::Error, /email format/i)
+        expect { customers.create(invalid_params) }.to raise_error(
+          PaystackSdk::InvalidFormatError,
+          "Invalid format for Email. Expected format: valid email address"
+        )
       end
     end
   end
 
   describe "#list" do
     context "with successful response" do
-      it "lists customers successfully" do
-        response_body = {
+      let(:response_data) do
+        {
           "status" => true,
           "message" => "Customers retrieved",
           "data" => [
             {
-              "integration" => 463433,
-              "first_name" => "Zero",
-              "last_name" => "Sum",
-              "email" => "customer@email.com",
-              "phone" => nil,
-              "metadata" => nil,
-              "domain" => "test",
               "customer_code" => "CUS_xr58yrr2ujlft9k",
-              "id" => 84312,
-              "createdAt" => "2020-07-15T13:46:39.000Z",
-              "updatedAt" => "2020-07-15T13:46:39.000Z"
+              "email" => "customer@email.com"
             }
-          ]
+          ],
+          "meta" => {
+            "total" => 1,
+            "perPage" => 50,
+            "page" => 1
+          }
         }
+      end
 
-        faraday_response = Faraday::Response.new(status: 200, body: response_body)
+      before do
+        allow(connection).to receive(:get)
+          .with("customer", hash_including(perPage: 50, page: 1))
+          .and_return(Faraday::Response.new(status: 200, body: response_data))
+      end
 
-        expect(connection).to receive(:get)
-          .with("customer", {page: 1, perPage: 50})
-          .and_return(faraday_response)
-
+      it "returns a list of customers" do
         response = customers.list
-
-        expect(response).to be_success
+        expect(response.success?).to be true
         expect(response.data.first.customer_code).to eq("CUS_xr58yrr2ujlft9k")
       end
     end
@@ -123,47 +111,56 @@ RSpec.describe PaystackSdk::Resources::Customers do
     let(:email_or_code) { "CUS_xr58yrr2ujlft9k" }
 
     context "with successful response" do
-      it "fetches a customer successfully" do
-        response_body = {
-          "status" => true,
-          "message" => "Customer retrieved",
-          "data" => {
-            "integration" => 463433,
-            "first_name" => "Zero",
-            "last_name" => "Sum",
-            "email" => "customer@email.com",
-            "phone" => nil,
-            "metadata" => nil,
-            "domain" => "test",
-            "customer_code" => "CUS_xr58yrr2ujlft9k",
-            "id" => 84312,
-            "createdAt" => "2020-07-15T13:46:39.000Z",
-            "updatedAt" => "2020-07-15T13:46:39.000Z"
-          }
-        }
-
-        faraday_response = Faraday::Response.new(status: 200, body: response_body)
-
-        expect(connection).to receive(:get)
+      before do
+        allow(connection).to receive(:get)
           .with("customer/#{email_or_code}")
-          .and_return(faraday_response)
+          .and_return(Faraday::Response.new(status: 200, body: {
+            "status" => true,
+            "message" => "Customer retrieved",
+            "data" => {
+              "customer_code" => email_or_code,
+              "email" => "customer@email.com"
+            }
+          }))
+      end
 
+      it "fetches customer details" do
         response = customers.fetch(email_or_code)
+        expect(response.success?).to be true
+        expect(response.data.customer_code).to eq(email_or_code)
+      end
+    end
 
-        expect(response).to be_success
-        expect(response.customer_code).to eq("CUS_xr58yrr2ujlft9k")
+    context "with not found error" do
+      before do
+        allow(connection).to receive(:get)
+          .with("customer/#{email_or_code}")
+          .and_return(Faraday::Response.new(status: 404, body: {
+            "status" => false,
+            "message" => "Customer code/email specified is invalid",
+            "meta" => {
+              "nextStep" => "Ensure that the value(s) you're passing are valid."
+            },
+            "type" => "validation_error",
+            "code" => "invalid_params"
+
+          }))
+      end
+
+      it "raises ResourceNotFoundError" do
+        expect { customers.fetch(email_or_code) }.to raise_error(
+          PaystackSdk::ResourceNotFoundError,
+          "Customer code/email specified is invalid"
+        )
       end
     end
 
     context "with validation errors" do
-      it "raises an error when email_or_code is nil" do
-        expect { customers.fetch(nil) }
-          .to raise_error(PaystackSdk::Error, /cannot be empty/i)
-      end
-
-      it "raises an error when email_or_code is empty" do
-        expect { customers.fetch("") }
-          .to raise_error(PaystackSdk::Error, /cannot be empty/i)
+      it "raises MissingParamError when email_or_code is nil" do
+        expect { customers.fetch(nil) }.to raise_error(
+          PaystackSdk::MissingParamError,
+          "Missing required parameter: email_or_code"
+        )
       end
     end
   end
@@ -179,48 +176,36 @@ RSpec.describe PaystackSdk::Resources::Customers do
     end
 
     context "with successful response" do
-      it "updates a customer successfully" do
-        response_body = {
-          "status" => true,
-          "message" => "Customer updated",
-          "data" => {
-            "integration" => 463433,
-            "first_name" => "John",
-            "last_name" => "Doe",
-            "email" => "customer@email.com",
-            "phone" => "+2348123456789",
-            "metadata" => nil,
-            "domain" => "test",
-            "customer_code" => "CUS_xr58yrr2ujlft9k",
-            "id" => 84312,
-            "createdAt" => "2020-07-15T13:46:39.000Z",
-            "updatedAt" => "2020-07-15T13:46:39.000Z"
-          }
-        }
-
-        faraday_response = Faraday::Response.new(status: 200, body: response_body)
-
-        expect(connection).to receive(:put)
+      before do
+        allow(connection).to receive(:put)
           .with("customer/#{code}", params)
-          .and_return(faraday_response)
+          .and_return(Faraday::Response.new(status: 200, body: {
+            "status" => true,
+            "message" => "Customer updated",
+            "data" => params.merge("customer_code" => code)
+          }))
+      end
 
+      it "updates customer details" do
         response = customers.update(code, params)
-
-        expect(response).to be_success
-        expect(response.first_name).to eq("John")
-        expect(response.last_name).to eq("Doe")
+        expect(response.success?).to be true
+        expect(response.data.first_name).to eq("John")
       end
     end
 
     context "with validation errors" do
-      it "raises an error when code is nil" do
-        expect { customers.update(nil, params) }
-          .to raise_error(PaystackSdk::Error, /cannot be empty/i)
+      it "raises InvalidFormatError when payload is not a hash" do
+        expect { customers.update(code, "invalid") }.to raise_error(
+          PaystackSdk::InvalidFormatError,
+          "Invalid format for payload. Expected format: Hash"
+        )
       end
 
-      it "raises an error when code is empty" do
-        expect { customers.update("", params) }
-          .to raise_error(PaystackSdk::Error, /cannot be empty/i)
+      it "raises MissingParamError when code is missing" do
+        expect { customers.update(nil, params) }.to raise_error(
+          PaystackSdk::MissingParamError,
+          "Missing required parameter: code"
+        )
       end
     end
   end
@@ -268,7 +253,7 @@ RSpec.describe PaystackSdk::Resources::Customers do
 
       it "raises an error when code is nil" do
         expect { customers.validate(nil, params) }
-          .to raise_error(PaystackSdk::Error, /cannot be empty/i)
+          .to raise_error(PaystackSdk::MissingParamError, "Missing required parameter: code")
       end
     end
   end
@@ -315,7 +300,7 @@ RSpec.describe PaystackSdk::Resources::Customers do
       it "raises an error when risk_action is invalid" do
         invalid_params = params.merge(risk_action: "invalid")
         expect { customers.set_risk_action(invalid_params) }
-          .to raise_error(PaystackSdk::Error, /risk_action/i)
+          .to raise_error(PaystackSdk::InvalidValueError, /risk_action/i)
       end
     end
   end

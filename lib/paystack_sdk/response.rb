@@ -3,12 +3,17 @@ module PaystackSdk
   # It offers convenient access to response data through dot notation and
   # supports both direct attribute access and hash/array-like operations.
   #
+  # The Response class handles API responses that use string keys (as returned
+  # by the Paystack API) and provides seamless access through both string and
+  # symbol notation.
+  #
   # Features:
   # - Dynamic attribute access via dot notation (response.data.attribute)
-  # - Hash-like access (response[:key])
+  # - Hash-like access (response[:key] or response["key"])
   # - Array-like access for list responses (response[0])
   # - Iteration support (response.each)
   # - Automatic handling of nested data structures
+  # - Consistent handling of string-keyed API responses
   #
   # @example Basic usage
   # ```ruby
@@ -49,28 +54,48 @@ module PaystackSdk
     # @return [Hash, Array, Object] The underlying data
     attr_reader :raw_data
 
+    # @return [Integer] The status code of the API response
+    attr_reader :status_code
+
     # Initializes a new Response object
     #
     # @param response [Faraday::Response, Hash, Array] The raw API response or data
+    # @raise [PaystackSdk::APIError] If the API returns an error response
+    # @raise [PaystackSdk::AuthenticationError] If authentication fails (401)
+    # @raise [PaystackSdk::ResourceNotFoundError] If resource is not found (404 or 400 with not found message)
+    # @raise [PaystackSdk::RateLimitError] If rate limit is exceeded (429)
+    # @raise [PaystackSdk::ServerError] If server returns 5xx error
     def initialize(response)
       if response.is_a?(Faraday::Response)
-        # Handle direct Faraday response
-        @success = response.success?
+        @status_code = response.status
         @body = response.body
         @api_message = extract_api_message(@body)
         @raw_data = extract_data_from_body(@body)
 
-        unless @success
-          @error_message = @api_message || "Paystack API Error"
+        case @status_code
+        when 200..299
+          @success = true
+        when 400
+          handle_400_response
+        when 401
+          raise AuthenticationError.new
+        when 404
+          handle_404_response
+        when 429
+          retry_after = response.headers["Retry-After"]
+          raise RateLimitError.new(retry_after || 30)
+        when 500..599
+          raise ServerError.new(@status_code, @api_message)
+        else
+          @success = false
+          raise APIError.new(@api_message || "Paystack API Error")
         end
       elsif response.is_a?(Response)
-        # If we're wrapping a Response object, just copy its data
-        @success = response.success
+        @success = response.success?
         @error_message = response.error_message
         @api_message = response.api_message
         @raw_data = response.raw_data
       else
-        # For direct data (Hash, Array, etc.)
         @success = true
         @raw_data = response
       end
@@ -197,24 +222,44 @@ module PaystackSdk
 
     private
 
-    # Extract API message from response body
+    # Extract the identifier from an error response
+    # This looks for common patterns in error messages to find resource identifiers
     #
     # @param body [Hash] The response body
-    # @return [String, nil] The API message
-    def extract_api_message(body)
-      body["message"] || body[:message] if body.is_a?(Hash)
+    # @return [String] The extracted identifier or "unknown"
+    def extract_identifier(body)
+      return "unknown" unless body.is_a?(Hash)
+
+      # First try to get identifier from the message
+      message = body["message"].to_s.downcase
+      if message =~ /with (id|code|reference|email): ([^\s]+)/i
+        return $2
+      end
+
+      # If not found in message, try to extract from error code
+      if body["code"]&.match?(/^(transaction|customer)_/)
+        parts = body["code"].to_s.split("_")
+        return parts.last if parts.last != "not_found"
+      end
+
+      "unknown"
     end
 
-    # Extract data from response body
+    # Extract the API message from the response body
     #
-    # @param body [Hash, Array] The response body
-    # @return [Hash, Array, Object] The data portion of the response
+    # @param body [Hash, nil] The response body
+    # @return [String, nil] The API message if present
+    def extract_api_message(body)
+      body["message"] if body.is_a?(Hash) && body["message"]
+    end
+
+    # Extract the data from the response body
+    #
+    # @param body [Hash, nil] The response body
+    # @return [Hash, Array, nil] The data from the response
     def extract_data_from_body(body)
-      if body.is_a?(Hash)
-        body["data"] || body[:data] || body
-      else
-        body
-      end
+      return body unless body.is_a?(Hash)
+      body["data"] || body
     end
 
     # Wrap value in Response if needed
@@ -233,6 +278,30 @@ module PaystackSdk
         # Return primitives as-is
         value
       end
+    end
+
+    def handle_400_response
+      if @body["code"]&.end_with?("_not_found") ||
+          @api_message&.match?(/not found|cannot find|does not exist/i)
+        resource_type = determine_resource_type
+        meta_info = @body["meta"]&.dig("nextStep")
+        message = @api_message
+        message = "#{message}\nHint: #{meta_info}" if meta_info
+        raise ResourceNotFoundError.new(resource_type, message)
+      else
+        @success = false
+        raise APIError.new(@api_message || "Paystack API Error")
+      end
+    end
+
+    def handle_404_response
+      resource_type = determine_resource_type
+      raise ResourceNotFoundError.new(resource_type, @api_message)
+    end
+
+    def determine_resource_type
+      resource = @body["code"].split("_").first
+      resource.capitalize
     end
   end
 end

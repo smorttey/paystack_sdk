@@ -145,7 +145,18 @@ module PaystackSdk
       # @option payload [String] :customer (required) Customer's code or email address
       # @option payload [String] :risk_action (required) Risk action to set ('default', 'allow', or 'deny')
       # @return [PaystackSdk::Response] The response from the Paystack API.
-      # @raise [PaystackSdk::Error] If the parameters are invalid or the API request fails.
+      # @raise [PaystackSdk::MissingParamError] If required parameters are missing
+      # @raise [PaystackSdk::InvalidValueError] If risk_action is not one of the allowed values
+      # @raise [PaystackSdk::APIError] If the API request fails.
+      #
+      # @example
+      # ```ruby
+      #   payload = { customer: "CUS_xxxxx", risk_action: "allow" }
+      #   response = customers.set_risk_action(payload)
+      #   if response.success?
+      #     puts "Risk action updated successfully"
+      #   end
+      # ```
       def set_risk_action(payload)
         validate_fields!(
           payload: payload,
