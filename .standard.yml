@@ -1,5 +1,5 @@
 # For available configuration options, see:
 #   https://github.com/standardrb/standard
-ruby_version: 3.2.2
+ruby_version: 3.3.5
 fix: true
 format: progress
