@@ -51,6 +51,9 @@ module PaystackSdk
     # @return [String, nil] API message from the response
     attr_reader :api_message
 
+    # @return [String, nil] API message from the response, if available
+    attr_reader :message
+
     # @return [Hash, Array, Object] The underlying data
     attr_reader :raw_data
 
@@ -70,6 +73,7 @@ module PaystackSdk
         @status_code = response.status
         @body = response.body
         @api_message = extract_api_message(@body)
+        @message = @api_message
         @raw_data = extract_data_from_body(@body)
 
         case @status_code
