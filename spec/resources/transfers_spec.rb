@@ -1,74 +1,75 @@
-RSpec.describe PaystackSdk::Resources::TransferRecipients do
+# frozen_string_literal: true
+
+RSpec.describe PaystackSdk::Resources::Transfers do
   let(:connection) { instance_double("PaystackSdk::Connection") }
-  let(:recipients) { described_class.new(connection) }
+  let(:transfers) { described_class.new(connection) }
   let(:params) do
     {
-      type: "nuban",
-      name: "Jane Doe",
-      account_number: "0001234567",
-      bank_code: "058",
-      currency: "NGN"
+      source: "balance",
+      amount: 50000,
+      recipient: "RCP_1234567890",
+      reason: "Test transfer"
     }
   end
 
   describe "#create" do
-    it "creates a transfer recipient and wraps response" do
+    it "creates a transfer and wraps response" do
       response_double = double("Response", success?: true)
       expect(connection).to receive(:post)
-        .with("/transferrecipient", params)
+        .with("/transfer", params)
         .and_return(response_double)
       expect(PaystackSdk::Response).to receive(:new).with(response_double)
-      recipients.create(params)
+      transfers.create(params)
     end
 
     it "raises error for missing required params" do
       expect {
-        recipients.create({})
+        transfers.create({})
       }.to raise_error(PaystackSdk::MissingParamError)
     end
   end
 
   describe "#list" do
-    it "lists transfer recipients and wraps response" do
+    it "lists transfers and wraps response" do
       response_double = double("Response", success?: true)
       expect(connection).to receive(:get)
-        .with("/transferrecipient", {})
+        .with("/transfer", {})
         .and_return(response_double)
       expect(PaystackSdk::Response).to receive(:new).with(response_double)
-      recipients.list
+      transfers.list
     end
   end
 
   describe "#fetch" do
-    it "fetches a transfer recipient and wraps response" do
+    it "fetches a transfer and wraps response" do
       response_double = double("Response", success?: true)
       expect(connection).to receive(:get)
-        .with("/transferrecipient/RCP_123")
+        .with("/transfer/12345")
         .and_return(response_double)
       expect(PaystackSdk::Response).to receive(:new).with(response_double)
-      recipients.fetch(recipient_code: "RCP_123")
+      transfers.fetch(id: "12345")
     end
   end
 
-  describe "#update" do
-    it "updates a transfer recipient and wraps response" do
+  describe "#finalize" do
+    it "finalizes a transfer and wraps response" do
       response_double = double("Response", success?: true)
-      expect(connection).to receive(:put)
-        .with("/transferrecipient/RCP_123", {name: "New Name"})
+      expect(connection).to receive(:post)
+        .with("/transfer/finalize_transfer", {transfer_code: "TRF_abc", otp: "123456"})
         .and_return(response_double)
       expect(PaystackSdk::Response).to receive(:new).with(response_double)
-      recipients.update(recipient_code: "RCP_123", params: {name: "New Name"})
+      transfers.finalize(transfer_code: "TRF_abc", otp: "123456")
     end
   end
 
-  describe "#delete" do
-    it "deletes a transfer recipient and wraps response" do
+  describe "#verify" do
+    it "verifies a transfer and wraps response" do
       response_double = double("Response", success?: true)
-      expect(connection).to receive(:delete)
-        .with("/transferrecipient/RCP_123")
+      expect(connection).to receive(:get)
+        .with("/transfer/verify/abc123")
         .and_return(response_double)
       expect(PaystackSdk::Response).to receive(:new).with(response_double)
-      recipients.delete(recipient_code: "RCP_123")
+      transfers.verify(reference: "abc123")
     end
   end
 end
