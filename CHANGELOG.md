@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.0.7] - 2025-06-25
+
+### Added
+
+- Transfer Recipients resource with full CRUD operations (create, list, fetch, update, delete)
+- Transfers resource with full API support (create/initiate, list, fetch, finalize, verify)
+- All resource methods now use `handle_response` for consistent response handling
+- Regression tests for Transfer Recipients and Transfers resources, ensuring response wrapping and validation
+
+### Changed
+
+- Registered `transfer_recipients` and `transfers` resources in the main client for easy access
+- Updated specs to verify that all resource methods wrap responses using `PaystackSdk::Response`
+
+### Improved
+
+- Enhanced test coverage for new resources and response handling
+- Improved code consistency by enforcing response wrapping and validation patterns across all new resources
+
 ## [0.0.6] - 2025-06-10
 
 ### Added
