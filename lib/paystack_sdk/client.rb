@@ -4,6 +4,7 @@ require_relative "resources/transactions"
 require_relative "resources/customers"
 require_relative "resources/transfer_recipients"
 require_relative "resources/transfers"
+require_relative "resources/banks"
 require_relative "utils/connection_utils"
 
 module PaystackSdk
@@ -90,6 +91,20 @@ module PaystackSdk
     # ```
     def transfers
       @transfers ||= Resources::Transfers.new(@connection)
+    end
+
+    # Provides access to the `Banks` resource.
+    #
+    # @return [PaystackSdk::Resources::Banks] An instance of the
+    #  `Banks` resource.
+    #
+    # @example
+    # ```ruby
+    #   banks = client.banks
+    #   response = banks.list
+    # ```
+    def banks
+      @banks ||= Resources::Banks.new(@connection)
     end
   end
 end

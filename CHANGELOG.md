@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.8] - 2025-06-26
+
+### Added
+
+- Banks resource with support for listing banks and currency validation
+- Regression tests for Banks resource, including validation for allowed currencies
+- Registered `banks` resource in the main client for easy access
+
+### Improved
+
+- Validation for allowed currency values in Banks resource for safer API usage
+
 ## [0.0.7] - 2025-06-25
 
 ### Added
