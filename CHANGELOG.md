@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.9] - 2025-06-26
+
+### Added
+
+- Verification resource with support for:
+  - Resolving bank accounts
+  - Resolving card BINs
+  - Validating accounts (with required and optional fields)
+- Registered `verification` resource in the main client for easy access
+- Regression tests for all Verification resource methods, including required field validation and full parameter support
+
+### Changed
+
+- Fix the link for listing banks API
+
 ## [0.0.8] - 2025-06-26
 
 ### Added
