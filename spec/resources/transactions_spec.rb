@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe PaystackSdk::Resources::Transactions do
-  let(:secret_key) { "sk_test_xxx" }
-  let(:connection) { instance_double(Faraday::Connection) }
+  let(:connection) { instance_double("PaystackSdk::Connection") }
   let(:transactions) { described_class.new(connection) }
 
   describe "#initiate" do
@@ -15,41 +14,37 @@ RSpec.describe PaystackSdk::Resources::Transactions do
     end
 
     context "with successful response" do
-      before do
-        allow(connection).to receive(:post)
-          .with("/transaction/initialize", params)
-          .and_return(Faraday::Response.new(status: 200, body: {
-            "status" => true,
-            "message" => "Authorization URL created",
-            "data" => {
-              "authorization_url" => "https://checkout.paystack.com/abc123",
-              "access_code" => "access_code_123",
-              "reference" => "ref_123"
-            }
-          }))
-      end
-
       it "initializes a transaction" do
+        response_double = double("Response", success?: true,
+          data: double("Data", authorization_url: "https://checkout.paystack.com/abc123"),
+          authorization_url: "https://checkout.paystack.com/abc123")
+        expect(connection).to receive(:post)
+          .with("/transaction/initialize", params)
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
+
         response = transactions.initiate(params)
         expect(response.success?).to be true
-
         expect(response.data.authorization_url).to eq("https://checkout.paystack.com/abc123")
         expect(response.authorization_url).to eq("https://checkout.paystack.com/abc123")
       end
     end
 
     context "with failed response" do
-      before do
-        allow(connection).to receive(:post)
+      it "returns an unsuccessful response" do
+        response_double = double("Response", success?: false, failed?: true,
+          error_message: "Transaction initialization failed")
+        expect(connection).to receive(:post)
           .with("/transaction/initialize", params)
-          .and_return(Faraday::Response.new(status: 400, body: {
-            "status" => false,
-            "message" => "Transaction initialization failed"
-          }))
-      end
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
 
-      it "raises an APIError" do
-        expect { transactions.initiate(params) }.to raise_error(PaystackSdk::APIError)
+        response = transactions.initiate(params)
+        expect(response.success?).to be false
+        expect(response.failed?).to be true
+        expect(response.error_message).to eq("Transaction initialization failed")
       end
     end
 
@@ -92,21 +87,14 @@ RSpec.describe PaystackSdk::Resources::Transactions do
     let(:reference) { "ref_123" }
 
     context "with successful response" do
-      before do
-        allow(connection).to receive(:get)
-          .with("/transaction/verify/#{reference}")
-          .and_return(Faraday::Response.new(status: 200, body: {
-            "status" => true,
-            "message" => "Transaction verified",
-            "data" => {
-              "reference" => reference,
-              "status" => true,
-              "amount" => 10000
-            }
-          }))
-      end
-
       it "verifies a transaction" do
+        response_double = double("Response", success?: true, status: true)
+        expect(connection).to receive(:get)
+          .with("/transaction/verify/#{reference}")
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
+
         response = transactions.verify(reference: reference)
         expect(response.success?).to be true
         expect(response.status).to be true
@@ -114,25 +102,19 @@ RSpec.describe PaystackSdk::Resources::Transactions do
     end
 
     context "with not found error" do
-      before do
-        allow(connection).to receive(:get)
+      it "returns an unsuccessful response" do
+        response_double = double("Response", success?: false, failed?: true,
+          error_message: "Transaction reference not found.")
+        expect(connection).to receive(:get)
           .with("/transaction/verify/#{reference}")
-          .and_return(Faraday::Response.new(status: 404, body: {
-            "status" => false,
-            "message" => "Transaction reference not found.",
-            "meta" => {
-              "nextStep" => "Ensure that you're passing the reference of a transaction that exists on this integration"
-            },
-            "type" => "validation_error",
-            "code" => "transaction_not_found"
-          }))
-      end
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
 
-      it "raises ResourceNotFoundError" do
-        expect { transactions.verify(reference: reference) }.to raise_error(
-          PaystackSdk::ResourceNotFoundError,
-          /Transaction reference not found/
-        )
+        response = transactions.verify(reference: reference)
+        expect(response.success?).to be false
+        expect(response.failed?).to be true
+        expect(response.error_message).to eq("Transaction reference not found.")
       end
     end
 
@@ -156,67 +138,17 @@ RSpec.describe PaystackSdk::Resources::Transactions do
     end
 
     context "with successful response" do
-      before do
-        allow(connection).to receive(:post)
-          .with("/transaction/charge_authorization", payload)
-          .and_return(Faraday::Response.new(status: 200, body: {
-            "status" => true,
-            "message" => "Charge attempted",
-            "data" => {
-              "amount" => 35247,
-              "currency" => "NGN",
-              "transaction_date" => "2024-08-22T10:53:49.000Z",
-              "status" => "success",
-              "reference" => "0m7frfnr47ezyxl",
-              "domain" => "test",
-              "metadata" => "",
-              "gateway_response" => "Approved",
-              "message" => nil,
-              "channel" => "card",
-              "ip_address" => nil,
-              "log" => nil,
-              "fees" => 10247,
-              "authorization" => {
-                "authorization_code" => "AUTH_uh8bcl3zbn",
-                "bin" => "408408",
-                "last4" => "4081",
-                "exp_month" => "12",
-                "exp_year" => "2030",
-                "channel" => "card",
-                "card_type" => "visa ",
-                "bank" => "TEST BANK",
-                "country_code" => "NG",
-                "brand" => "visa",
-                "reusable" => true,
-                "signature" => "SIG_yEXu7dLBeqG0kU7g95Ke",
-                "account_name" => nil
-              },
-              "customer" => {
-                "id" => 181873746,
-                "first_name" => nil,
-                "last_name" => nil,
-                "email" => "customer@email.com",
-                "customer_code" => "CUS_1rkzaqsv4rrhqo6",
-                "phone" => nil,
-                "metadata" => {
-                  "custom_fields" => [
-                    {
-                      "display_name" => "Customer email",
-                      "variable_name" => "customer_email",
-                      "value" => "new@email.com"
-                    }
-                  ]
-                },
-                "risk_action" => "default",
-                "international_format_phone" => nil
-              },
-              "plan" => nil,
-              "id" => 4099490251
-            }
-          }))
-      end
-
       it "charges the authorization" do
+        response_double = double("Response", success?: true, status: "success",
+          api_message: "Charge attempted", amount: 35247, reference: "0m7frfnr47ezyxl",
+          authorization: double("Authorization", authorization_code: "AUTH_uh8bcl3zbn"),
+          customer: double("Customer", email: "customer@email.com"))
+        expect(connection).to receive(:post)
+          .with("/transaction/charge_authorization", payload)
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
+
         response = transactions.charge_authorization(payload)
 
         expect(response.success?).to be true
@@ -267,21 +199,14 @@ RSpec.describe PaystackSdk::Resources::Transactions do
     end
 
     context "with successful response" do
-      before do
-        allow(connection).to receive(:post)
-          .with("/transaction/partial_debit", payload)
-          .and_return(Faraday::Response.new(status: 200, body: {
-            "status" => true,
-            "message" => "Debit successful",
-            "data" => {
-              "reference" => "ref_123",
-              "status" => "success",
-              "amount" => 10000
-            }
-          }))
-      end
-
       it "performs a partial debit" do
+        response_double = double("Response", success?: true, status: "success")
+        expect(connection).to receive(:post)
+          .with("/transaction/partial_debit", payload)
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
+
         response = transactions.partial_debit(payload)
         expect(response.success?).to be true
         expect(response.status).to eq("success")

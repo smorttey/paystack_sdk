@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe PaystackSdk::Resources::Customers do
-  let(:secret_key) { "sk_test_xxx" }
-  let(:connection) { instance_double(Faraday::Connection) }
+  let(:connection) { instance_double("PaystackSdk::Connection") }
   let(:customers) { described_class.new(connection) }
 
   describe "#create" do
@@ -16,23 +15,15 @@ RSpec.describe PaystackSdk::Resources::Customers do
     end
 
     context "with successful response" do
-      before do
-        allow(connection).to receive(:post)
-          .with("customer", params)
-          .and_return(Faraday::Response.new(status: 200, body: {
-            "status" => true,
-            "message" => "Customer created",
-            "data" => {
-              "customer_code" => "CUS_xr58yrr2ujlft9k",
-              "email" => params[:email],
-              "first_name" => params[:first_name],
-              "last_name" => params[:last_name],
-              "phone" => params[:phone]
-            }
-          }))
-      end
-
       it "creates a new customer" do
+        response_double = double("Response", success?: true,
+          data: double("Data", customer_code: "CUS_xr58yrr2ujlft9k"))
+        expect(connection).to receive(:post)
+          .with("customer", params)
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
+
         response = customers.create(params)
         expect(response).to be_success
         expect(response.data.customer_code).to eq("CUS_xr58yrr2ujlft9k")
@@ -40,17 +31,19 @@ RSpec.describe PaystackSdk::Resources::Customers do
     end
 
     context "with failed response" do
-      before do
-        allow(connection).to receive(:post)
+      it "returns an unsuccessful response" do
+        response_double = double("Response", success?: false, failed?: true,
+          error_message: "Customer creation failed")
+        expect(connection).to receive(:post)
           .with("customer", params)
-          .and_return(Faraday::Response.new(status: 400, body: {
-            "status" => false,
-            "message" => "Customer creation failed"
-          }))
-      end
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
 
-      it "raises an APIError" do
-        expect { customers.create(params) }.to raise_error(PaystackSdk::APIError)
+        response = customers.create(params)
+        expect(response.success?).to be false
+        expect(response.failed?).to be true
+        expect(response.error_message).to eq("Customer creation failed")
       end
     end
 
@@ -75,31 +68,15 @@ RSpec.describe PaystackSdk::Resources::Customers do
 
   describe "#list" do
     context "with successful response" do
-      let(:response_data) do
-        {
-          "status" => true,
-          "message" => "Customers retrieved",
-          "data" => [
-            {
-              "customer_code" => "CUS_xr58yrr2ujlft9k",
-              "email" => "customer@email.com"
-            }
-          ],
-          "meta" => {
-            "total" => 1,
-            "perPage" => 50,
-            "page" => 1
-          }
-        }
-      end
-
-      before do
-        allow(connection).to receive(:get)
-          .with("customer", hash_including(perPage: 50, page: 1))
-          .and_return(Faraday::Response.new(status: 200, body: response_data))
-      end
-
       it "returns a list of customers" do
+        response_double = double("Response", success?: true,
+          data: double("Data", first: double("Customer", customer_code: "CUS_xr58yrr2ujlft9k")))
+        expect(connection).to receive(:get)
+          .with("customer", hash_including(perPage: 50, page: 1))
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
+
         response = customers.list
         expect(response.success?).to be true
         expect(response.data.first.customer_code).to eq("CUS_xr58yrr2ujlft9k")
@@ -111,20 +88,15 @@ RSpec.describe PaystackSdk::Resources::Customers do
     let(:email_or_code) { "CUS_xr58yrr2ujlft9k" }
 
     context "with successful response" do
-      before do
-        allow(connection).to receive(:get)
-          .with("customer/#{email_or_code}")
-          .and_return(Faraday::Response.new(status: 200, body: {
-            "status" => true,
-            "message" => "Customer retrieved",
-            "data" => {
-              "customer_code" => email_or_code,
-              "email" => "customer@email.com"
-            }
-          }))
-      end
-
       it "fetches customer details" do
+        response_double = double("Response", success?: true,
+          data: double("Data", customer_code: email_or_code))
+        expect(connection).to receive(:get)
+          .with("customer/#{email_or_code}")
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
+
         response = customers.fetch(email_or_code)
         expect(response.success?).to be true
         expect(response.data.customer_code).to eq(email_or_code)
@@ -132,26 +104,19 @@ RSpec.describe PaystackSdk::Resources::Customers do
     end
 
     context "with not found error" do
-      before do
-        allow(connection).to receive(:get)
+      it "returns an unsuccessful response" do
+        response_double = double("Response", success?: false, failed?: true,
+          error_message: "Customer code/email specified is invalid")
+        expect(connection).to receive(:get)
           .with("customer/#{email_or_code}")
-          .and_return(Faraday::Response.new(status: 404, body: {
-            "status" => false,
-            "message" => "Customer code/email specified is invalid",
-            "meta" => {
-              "nextStep" => "Ensure that the value(s) you're passing are valid."
-            },
-            "type" => "validation_error",
-            "code" => "invalid_params"
+          .and_return(response_double)
+        expect(PaystackSdk::Response).to receive(:new).with(response_double)
+          .and_return(response_double)
 
-          }))
-      end
-
-      it "raises ResourceNotFoundError" do
-        expect { customers.fetch(email_or_code) }.to raise_error(
-          PaystackSdk::ResourceNotFoundError,
-          "Customer code/email specified is invalid"
-        )
+        response = customers.fetch(email_or_code)
+        expect(response.success?).to be false
+        expect(response.failed?).to be true
+        expect(response.error_message).to eq("Customer code/email specified is invalid")
       end
     end
 

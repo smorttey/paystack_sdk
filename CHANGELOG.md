@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.1.0] - 2025-06-26
+
+### Changed
+
+#### Error Handling Strategy
+
+- **BREAKING**: Clarified error handling approach - the SDK now consistently follows a two-tier error handling strategy:
+  - **Validation errors** (missing/invalid input data) are thrown as exceptions immediately before API calls
+  - **API response errors** (business logic, not found, etc.) are returned as unsuccessful Response objects
+- Updated documentation to clearly explain when exceptions are thrown vs. when to check `response.success?`
+
+#### Test Infrastructure
+
+- **BREAKING**: Standardized all test specifications to use connection doubles instead of Faraday-specific mocks
+- Updated test pattern across all resource specs to use `instance_double("PaystackSdk::Connection")` for better framework independence
+- All tests now follow consistent mocking pattern with `PaystackSdk::Response.new()` expectations
+
+#### Documentation
+
+- Enhanced README with comprehensive error handling examples
+- Added validation error examples showing `MissingParamError`, `InvalidFormatError`, and `InvalidValueError`
+- Updated Quick Start guide to demonstrate proper exception handling
+- Clarified the difference between input validation (exceptions) and API response handling (Response objects)
+
+### Improved
+
+- Better separation of concerns between input validation and API error handling
+- More consistent test suite that's not tied to specific HTTP client implementation
+- Clearer developer experience with predictable error handling patterns
+
 ## [0.0.9] - 2025-06-26
 
 ### Added

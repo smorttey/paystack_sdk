@@ -69,13 +69,19 @@ params = {
   currency: "NGN"
 }
 
-response = paystack.transactions.initiate(params)
+begin
+  response = paystack.transactions.initiate(params)
 
-if response.success?
-  puts "Visit this URL to complete payment: #{response.authorization_url}"
-  puts "Transaction reference: #{response.reference}"
-else
-  puts "Error: #{response.error_message}"
+  if response.success?
+    puts "Visit this URL to complete payment: #{response.authorization_url}"
+    puts "Transaction reference: #{response.reference}"
+  else
+    puts "Error: #{response.error_message}"
+  end
+rescue PaystackSdk::MissingParamError => e
+  puts "Missing required data: #{e.message}"
+rescue PaystackSdk::InvalidFormatError => e
+  puts "Invalid data format: #{e.message}"
 end
 
 # Create a customer
@@ -85,18 +91,71 @@ customer_params = {
   last_name: "Doe"
 }
 
-customer_response = paystack.customers.create(customer_params)
+begin
+  customer_response = paystack.customers.create(customer_params)
 
-if customer_response.success?
-  puts "Customer created: #{customer_response.data.customer_code}"
-else
-  puts "Error: #{customer_response.error_message}"
+  if customer_response.success?
+    puts "Customer created: #{customer_response.data.customer_code}"
+  else
+    puts "Error: #{customer_response.error_message}"
+  end
+rescue PaystackSdk::ValidationError => e
+  puts "Validation error: #{e.message}"
 end
 ```
 
 ### Response Format
 
 The SDK handles API responses that use string keys (as returned by Paystack) and provides seamless access through both string and symbol notation. All response data maintains the original string key format from the API while offering convenient dot notation access.
+
+### Error Handling
+
+The SDK uses a two-tier error handling approach:
+
+1. **Validation Errors** (thrown as exceptions) - for missing or invalid input data
+2. **API Response Errors** (returned as unsuccessful Response objects) - for API-level issues
+
+#### Input Validation
+
+The SDK validates your parameters **before** making API calls and throws exceptions immediately for data issues:
+
+```ruby
+begin
+  # This will throw an exception before making any API call
+  response = paystack.transactions.initiate({amount: 1000}) # Missing required email
+rescue PaystackSdk::MissingParamError => e
+  puts "Fix your data: #{e.message}"
+end
+```
+
+#### API Response Handling
+
+All successful API calls return a `Response` object that you can check for success:
+
+```ruby
+response = paystack.transactions.initiate(valid_params)
+
+if response.success?
+  puts "Transaction created: #{response.authorization_url}"
+else
+  puts "Transaction failed: #{response.error_message}"
+
+  # Get detailed error information
+  error_details = response.error_details
+  puts "Status code: #{error_details[:status_code]}"
+  puts "Error message: #{error_details[:message]}"
+end
+```
+
+**Note**: The SDK raises exceptions for:
+
+- **Validation errors** - when required parameters are missing or have invalid formats
+- **Authentication errors** (401) - usually configuration issues
+- **Rate limiting** (429) - requires retry logic
+- **Server errors** (5xx) - Paystack infrastructure issues
+- **Network errors** - connection failures
+
+All other API errors (resource not found, business logic errors, etc.) are returned as unsuccessful Response objects.
 
 ## Usage
 
@@ -457,19 +516,19 @@ total_count = original.dig("meta", "total")
 current_page = original.dig("meta", "page")
 ```
 
-#### Error Handling
+#### Exception Handling
 
 The SDK provides specific error classes for different types of failures, making it easier to handle errors appropriately:
 
 ```ruby
 begin
   response = paystack.transactions.verify(reference: "invalid_reference")
-rescue PaystackSdk::ResourceNotFoundError => e
-  puts "Resource not found: #{e.message}"
 rescue PaystackSdk::AuthenticationError => e
   puts "Authentication failed: #{e.message}"
-rescue PaystackSdk::ValidationError => e
-  puts "Validation error: #{e.message}"
+rescue PaystackSdk::RateLimitError => e
+  puts "Rate limit exceeded. Retry after: #{e.retry_after} seconds"
+rescue PaystackSdk::ServerError => e
+  puts "Server error: #{e.message}"
 rescue PaystackSdk::APIError => e
   puts "API error: #{e.message}"
 rescue PaystackSdk::Error => e
@@ -506,6 +565,41 @@ The SDK includes several specific error classes:
   - **`PaystackSdk::ResourceNotFoundError`** - Resource not found (404 errors)
   - **`PaystackSdk::RateLimitError`** - Rate limiting encountered
   - **`PaystackSdk::ServerError`** - Server errors (5xx responses)
+
+##### Validation Error Examples
+
+The SDK validates your input data **before** making API calls and will throw exceptions immediately if required data is missing or incorrectly formatted:
+
+```ruby
+# Missing required parameter
+begin
+  paystack.transactions.initiate({amount: 1000}) # Missing email
+rescue PaystackSdk::MissingParamError => e
+  puts e.message # => "Missing required parameter: email"
+end
+
+# Invalid format
+begin
+  paystack.transactions.initiate({
+    email: "invalid-email",  # Not a valid email format
+    amount: 1000
+  })
+rescue PaystackSdk::InvalidFormatError => e
+  puts e.message # => "Invalid format for Email. Expected format: valid email address"
+end
+
+# Invalid value
+begin
+  paystack.customers.set_risk_action({
+    customer: "CUS_123",
+    risk_action: "invalid_action"  # Not in allowed values
+  })
+rescue PaystackSdk::InvalidValueError => e
+  puts e.message # => "Invalid value for risk_action: must be one of [default, allow, deny]"
+end
+```
+
+These validation errors are thrown immediately and prevent the API call from being made, helping you catch data issues early in development.
 
 ## Advanced Usage
 

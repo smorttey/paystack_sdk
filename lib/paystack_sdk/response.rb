@@ -63,11 +63,11 @@ module PaystackSdk
     # Initializes a new Response object
     #
     # @param response [Faraday::Response, Hash, Array] The raw API response or data
-    # @raise [PaystackSdk::APIError] If the API returns an error response
     # @raise [PaystackSdk::AuthenticationError] If authentication fails (401)
-    # @raise [PaystackSdk::ResourceNotFoundError] If resource is not found (404 or 400 with not found message)
     # @raise [PaystackSdk::RateLimitError] If rate limit is exceeded (429)
     # @raise [PaystackSdk::ServerError] If server returns 5xx error
+    # @note API-level errors (4xx except 401) are returned as unsuccessful Response objects
+    #       rather than raised as exceptions. Use response.success? to check for errors.
     def initialize(response)
       if response.is_a?(Faraday::Response)
         @status_code = response.status
@@ -79,20 +79,25 @@ module PaystackSdk
         case @status_code
         when 200..299
           @success = true
-        when 400
-          handle_400_response
-        when 401
-          raise AuthenticationError.new
-        when 404
-          handle_404_response
+        when 400..499
+          # Client errors - return unsuccessful response for user to handle
+          @success = false
+          @error_message = @api_message || "Client error"
+
+          # Still raise for authentication issues as these are usually config problems
+          if @status_code == 401
+            raise AuthenticationError.new(@api_message || "Authentication failed")
+          end
         when 429
+          # Rate limiting - raise as users need to implement retry logic
           retry_after = response.headers["Retry-After"]
           raise RateLimitError.new(retry_after || 30)
         when 500..599
+          # Server errors - raise as these indicate Paystack infrastructure issues
           raise ServerError.new(@status_code, @api_message)
         else
           @success = false
-          raise APIError.new(@api_message || "Paystack API Error")
+          @error_message = @api_message || "Unknown error"
         end
       elsif response.is_a?(Response)
         @success = response.success?
@@ -118,6 +123,26 @@ module PaystackSdk
     # @return [Boolean] true if the API request was successful
     def success?
       @success
+    end
+
+    # Check if the response failed
+    #
+    # @return [Boolean] true if the API request failed
+    def failed?
+      !@success
+    end
+
+    # Get error information if the request failed
+    #
+    # @return [Hash] Hash containing error details, or empty hash if successful
+    def error_details
+      return {} if success?
+
+      {
+        status_code: @status_code,
+        message: @error_message || @api_message,
+        raw_response: @body
+      }.compact
     end
 
     # Returns the original response body
@@ -284,28 +309,15 @@ module PaystackSdk
       end
     end
 
-    def handle_400_response
-      if @body["code"]&.end_with?("_not_found") ||
-          @api_message&.match?(/not found|cannot find|does not exist/i)
-        resource_type = determine_resource_type
-        meta_info = @body["meta"]&.dig("nextStep")
-        message = @api_message
-        message = "#{message}\nHint: #{meta_info}" if meta_info
-        raise ResourceNotFoundError.new(resource_type, message)
-      else
-        @success = false
-        raise APIError.new(@api_message || "Paystack API Error")
-      end
-    end
-
-    def handle_404_response
-      resource_type = determine_resource_type
-      raise ResourceNotFoundError.new(resource_type, @api_message)
-    end
-
     def determine_resource_type
-      resource = @body["code"].split("_").first
-      resource.capitalize
+      return "Unknown" unless @body.is_a?(Hash) && @body["code"]
+
+      if @body["code"].include?("_")
+        parts = @body["code"].to_s.split("_")
+        return parts.last if parts.last != "not_found"
+      end
+
+      "unknown"
     end
   end
 end
