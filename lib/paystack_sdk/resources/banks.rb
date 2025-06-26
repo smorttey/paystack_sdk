@@ -4,7 +4,7 @@ module PaystackSdk
   module Resources
     class Banks < Base
       # List banks
-      # @see https://paystack.com/docs/api/bank/#list
+      # @see https://paystack.com/docs/api/miscellaneous/#bank
       def list(query = {})
         if query.key?(:currency)
           validate_allowed_values!(
